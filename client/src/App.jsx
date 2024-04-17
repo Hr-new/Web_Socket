@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5000");
+const socket = io("http://localhost:5000", { withCredentials: true });
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -9,41 +9,46 @@ function App() {
   const [inputMessage, setInputMessage] = useState("");
   const [room, setRoom] = useState("");
 
+  console.log("messages", messages);
+
   useEffect(() => {
     // When client connected with server first this event trigger
     socket.on("connect", () => {
       console.log(`Conncetion done with Socket id ${socket.id}`);
     });
 
-    socket.on("message", (message) => {
-      setMessages([...messages, message]);
-    });
+    // For sending Personal message
+    // socket.on("message", (message) => {
+    //   console.log(message);
+    //   setMessages([...messages, message]);
+    // });
 
     socket.on("receive-message", (data) => {
-      console.log(data);
+      console.log("receive-message-data", data);
       setMessages((messages) => [...messages, data]);
     });
 
-
     return () => {
-      socket.off("message");
+      socket.disconnect();
     };
-  }, [messages]);
+  }, []);
 
   const sendMessage = () => {
     if (inputMessage.trim() !== "") {
-      socket.emit("message", {inputMessage,room});
+      socket.emit("message", { inputMessage, room });
       setInputMessage("");
-      setRoom("")
+      // setRoom("");
     }
   };
+
   const handleKeyDown = (event) => {
     if (event.key === "Enter") {
       sendMessage();
     }
   };
 
-  const joinRoomHandler = () => {
+  const joinRoom = (e) => {
+    e.preventDefault();
     socket.emit("join-room", roomName);
     setRoomName("");
   };
@@ -51,15 +56,15 @@ function App() {
     <div className="App">
       <h1>Simple Chat App</h1>
 
-        <h5>Join Room</h5>
-        <input
-          value={roomName}
-          onChange={(e) => setRoomName(e.target.value)}
-          placeholder="Enter Room Name"
-        />
-        <button type="submit" color="primary" onClick={joinRoomHandler}>
-          Join
-        </button>
+      <h5>Join Room</h5>
+      <input
+        value={roomName}
+        onChange={(e) => setRoomName(e.target.value)}
+        placeholder="Enter Room Name"
+      />
+      <button type="submit" color="primary" onClick={joinRoom}>
+        Join
+      </button>
       <br />
       <br />
       <br />
@@ -70,7 +75,7 @@ function App() {
         placeholder="Type your message..."
         onKeyDown={handleKeyDown}
       />
-        <input
+      <input
         type="text"
         value={room}
         onChange={(e) => setRoom(e.target.value)}
@@ -81,8 +86,8 @@ function App() {
       <button onClick={sendMessage}>Send</button>
 
       <div className="messages">
-        {messages.map((message, index) => (
-          <div key={index}>{message}</div>
+        {messages.map((msg, index) => (
+          <div key={index}>{msg}</div>
         ))}
       </div>
     </div>
