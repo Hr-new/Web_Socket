@@ -15,7 +15,7 @@ const app = express();
 // For handling of http request this sever is created
 const server = createServer(app);
 
-// To handle Io request create server 
+// To handle Io request create server
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173",
@@ -27,39 +27,52 @@ const io = new Server(server, {
 // middleware cors
 app.use(cors());
 
-// Add miidle ware before connection
+const  authenticate=(socket, next)=>{
+  cookieParser()(socket.request, socket.request.res, (err) => {
+    if (err) return next(err);
+
+    const token = socket.request.cookies.token;
+    if (!token) return next(new Error("Authentication Error"));
+
+    const decoded = jwt.verify(token, SecretKey);
+    // console.log("decoded",decoded)
+    return next();
+  });
+}
+// Add authentication and middleware
 io.use((socket, next) => {
-    cookieParser()(socket.request, socket.request.res, (err) => {
-      if (err) return next(err);
-
-      const token = socket.request.cookies.token;
-      if (!token) return next(new Error("Authentication Error"));
-
-      const decoded = jwt.verify(token, SecretKey);
-      // console.log("decoded",decoded)
-      next();
-    });
+  authenticate(socket, next);
 });
 
 // socket.io stuff
 io.on("connection", (socket) => {
   console.log(`New client connected with Socket id ${socket.id}`);
 
-  // Send meaage to particular user like personal chat
-  // socket.on("message", (message) => {
-  //   console.log("Message received From Client:", message);
-  //   io.emit("message", message);
-  // });
-
-  // send message to group
-  socket.on("message", ({ inputMessage, room }) => {
-    console.log("Message received From Client:", inputMessage, room);
-    socket.to(room).emit("receive-message", inputMessage);
+  // BroadCast or send to allclient Message
+  socket.on("broadCastMessage", (message) => {
+    console.log("Message received From Client:", message);
+    // sends the data to every connected client, including the client that originally sent the message
+    io.emit("message", message);
+    // sends the data to all connected clients except the client that triggered the event.
+    // socket.broadcast.emit("message", message);
   });
 
+  // send message to specific room
+  socket.on("messageToRoom", ({ inputMessage, room }) => {
+    console.log("Message received From Client:", inputMessage, room);
+    socket.to(room).emit("message", inputMessage);
+  });
+
+  //Join Room
   socket.on("join-room", (roomName) => {
     socket.join(roomName);
     console.log(`User joined room ${roomName}`);
+  });
+
+  // Leaving a room
+  socket.on("leaveRoom", (room) => {
+    socket.leave(room);
+    console.log(`User left room ${room}`);
   });
 
   socket.on("disconnect", () => {
@@ -77,9 +90,9 @@ app.get("/login", (req, res) => {
     .json({ message: "Login Successfully" });
 });
 
-app.get("/",(req,res)=>{
-  res.json({message:"Welcome to Chat application"})
-})
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to Chat application" });
+});
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

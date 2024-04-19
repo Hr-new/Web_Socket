@@ -17,27 +17,35 @@ function App() {
       console.log(`Conncetion done with Socket id ${socket.id}`);
     });
 
-    // For sending Personal message
-    // socket.on("message", (message) => {
-    //   console.log(message);
-    //   setMessages([...messages, message]);
-    // });
-
-    socket.on("receive-message", (data) => {
+    socket.on("message", (data) => {
       console.log("receive-message-data", data);
       setMessages((messages) => [...messages, data]);
     });
 
+    // cleanup on unmount
     return () => {
       socket.disconnect();
     };
   }, []);
 
+  // send message to group
   const sendMessage = () => {
-    if (inputMessage.trim() !== "") {
-      socket.emit("message", { inputMessage, room });
+    if (inputMessage.trim() !== "" && room.trim() !== "") {
+      socket.emit("messageToRoom", { inputMessage, room });
       setInputMessage("");
-      // setRoom("");
+    } else {
+      alert("Please Enter Message and Room Name");
+    }
+  };
+
+  // Broadcast the message
+  const broadCastMessage = () => {
+    if (inputMessage.trim() !== "") {
+      socket.emit("broadCastMessage", inputMessage);
+      setInputMessage("");
+    }
+    else {
+      alert("Please Enter Message");
     }
   };
 
@@ -47,11 +55,28 @@ function App() {
     }
   };
 
+  // Join the particular Room
   const joinRoom = (e) => {
     e.preventDefault();
-    socket.emit("join-room", roomName);
-    setRoomName("");
+    if (roomName.trim() !== "") {
+      socket.emit("join-room", roomName);
+      setRoomName("");
+    } else {
+      alert("Please Enter Room Name");
+    }
   };
+
+  // Leave the particular Room
+  const leaveRoom = (e) => {
+    if (roomName.trim() !== "") {
+      e.preventDefault();
+      socket.emit("leaveRoom", roomName);
+      setRoomName("");
+    } else {
+      alert("Please Enter Room Name");
+    }
+  };
+
   return (
     <div className="App">
       <h1>Simple Chat App</h1>
@@ -63,7 +88,10 @@ function App() {
         placeholder="Enter Room Name"
       />
       <button type="submit" color="primary" onClick={joinRoom}>
-        Join
+        Join Room
+      </button>
+      <button type="submit" color="primary" onClick={leaveRoom}>
+        Leave Room
       </button>
       <br />
       <br />
@@ -83,8 +111,8 @@ function App() {
         onKeyDown={handleKeyDown}
       />
 
-      <button onClick={sendMessage}>Send</button>
-
+      <button onClick={sendMessage}>Send To Room</button>
+      <button onClick={broadCastMessage}>BroadCast</button>
       <div className="messages">
         {messages.map((msg, index) => (
           <div key={index}>{msg}</div>
