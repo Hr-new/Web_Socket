@@ -17,6 +17,10 @@ function App() {
       console.log(`Conncetion done with Socket id ${socket.id}`);
     });
 
+    socket.on("receiveMessage", (data) => {
+      console.log("receive-message-data", data);
+      setMessages((messages) => [...messages, data]);
+    });
     socket.on("message", (data) => {
       console.log("receive-message-data", data);
       setMessages((messages) => [...messages, data]);
@@ -29,9 +33,19 @@ function App() {
   }, []);
 
   // send message to group
-  const sendMessage = () => {
+  const sendMessageRoom = () => {
     if (inputMessage.trim() !== "" && room.trim() !== "") {
       socket.emit("messageToRoom", { inputMessage, room });
+
+      setInputMessage("");
+    } else {
+      alert("Please Enter Message and Room Name");
+    }
+  };
+  // send message
+  const sendMessage = () => {
+    if (inputMessage.trim() !== "") {
+      socket.emit("sendMessage", inputMessage);
       setInputMessage("");
     } else {
       alert("Please Enter Message and Room Name");
@@ -43,8 +57,7 @@ function App() {
     if (inputMessage.trim() !== "") {
       socket.emit("broadCastMessage", inputMessage);
       setInputMessage("");
-    }
-    else {
+    } else {
       alert("Please Enter Message");
     }
   };
@@ -110,8 +123,8 @@ function App() {
         placeholder="Type Room Name"
         onKeyDown={handleKeyDown}
       />
-
-      <button onClick={sendMessage}>Send To Room</button>
+      <button onClick={sendMessage}>Send</button>
+      <button onClick={sendMessageRoom}>Send To Room</button>
       <button onClick={broadCastMessage}>BroadCast</button>
       <div className="messages">
         {messages.map((msg, index) => (
